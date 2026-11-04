@@ -1,0 +1,55 @@
+{
+  "name": "missile-swarm-kit",
+  "version": "0.1.0",
+  "description": "Homing missile swarm choreography (pods that split into dozens of curving homing missiles) and procedural organic airframes for three.js",
+  "homepage": "https://missile-swarm.pages.dev/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/studio-veco/missile-swarm-kit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/studio-veco/missile-swarm-kit/issues"
+  },
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./missiles": "./src/missiles.js",
+    "./flight": "./src/flight.js",
+    "./world": "./src/world.js",
+    "./math": "./src/math.js",
+    "./aircraft": "./src/aircraft/index.js"
+  },
+  "files": [
+    "src",
+    "skills",
+    "examples",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "preview": "node tools/preview.mjs preview.png"
+  },
+  "peerDependencies": {
+    "three": ">=0.160.0"
+  },
+  "peerDependenciesMeta": {
+    "three": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "three": "^0.170.0"
+  },
+  "keywords": [
+    "three.js",
+    "missile",
+    "homing",
+    "swarm-missiles",
+    "procedural",
+    "aircraft",
+    "swarm",
+    "animation"
+  ],
+  "license": "MIT"
+}
