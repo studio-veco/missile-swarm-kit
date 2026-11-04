@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MISSILE SWARM</title>
+<meta name="description" content="追尾ミサイル 100 発を操縦だけで振り切る。機体・ミサイルの段数・軌道の割合を選ぶと、その場で計算し直して飛ばします。">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%227%22 fill=%22%23000%22/%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%227%22 fill=%22%23ff3d9a%22/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@900&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
+<style>
+  :root {
+    --bg: #000; --fg: #e8eef6; --dim: #8d9bb0; --faint: #4b5668; --line: rgba(255,255,255,0.10);
+    --panel: rgba(9, 12, 18, 0.94); --pink: #ff3d9a; --cyan: #27d6ff;
+    --cC: #e8eef6; --cE: #27d6ff; --cS: #ff3d9a; --cW: #a98bff;
+    --gothic: 'Zen Kaku Gothic New', 'Hiragino Sans', 'Yu Gothic', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font-family: var(--gothic); -webkit-font-smoothing: antialiased; }
+  body { overflow: hidden; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
+  /* ---- 映像 ---- */
+  #stage { position: fixed; inset: 0; display: grid; place-items: center; background: #000; }
+  #c { display: block; width: min(100vw, calc(100vh * 16 / 9)); aspect-ratio: 16 / 9; background: #000; touch-action: none; }
+  #app.free #c { cursor: grab; }
+  #app.free #c:active { cursor: grabbing; }
+  #status { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 10px 18px; border-radius: 999px; background: rgba(0,0,0,0.6); color: var(--dim); font-size: 13px; letter-spacing: 0.12em; opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap; }
+  #status.on { opacity: 1; }
+  #bigplay { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 12px; padding: 16px 30px 16px 24px; border-radius: 999px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.22); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); font-weight: 700; font-size: 17px; letter-spacing: 0.1em; transition: background .2s, transform .2s; }
+  #bigplay:hover { background: rgba(255,61,154,0.22); transform: translate(-50%, -50%) scale(1.03); }
+  #bigplay svg { width: 22px; height: 22px; }
+  #bigplay[hidden] { display: none; }
+
+  /* ---- 再生バー ---- */
+  #bar { position: fixed; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 10px; padding: 18px 18px calc(14px + env(safe-area-inset-bottom)); background: linear-gradient(to top, rgba(0,0,0,0.82), rgba(0,0,0,0)); transition: opacity .45s; z-index: 5; }
+  #app.idle #bar { opacity: 0; }
+  #app.panel #bar { right: min(400px, 100vw); transition: opacity .45s, right .35s; }
+  #app.idle { cursor: none; }
+  .icon { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 10px; flex: none; }
+  .icon:hover, .text:hover { background: rgba(255,255,255,0.08); }
+  .icon svg { width: 20px; height: 20px; }
+  #play .i-pause { display: none; }
+  #app.playing #play .i-play { display: none; }
+  #app.playing #play .i-pause { display: block; }
+  #sound .i-off { display: none; }
+  #sound[aria-pressed="false"] .i-on { display: none; }
+  #sound[aria-pressed="false"] .i-off { display: block; }
+  #seek { flex: 1; min-width: 80px; accent-color: var(--pink); height: 28px; }
+  #time { font: 500 12px var(--mono); color: var(--dim); min-width: 84px; text-align: right; flex: none; }
+  .seg { display: inline-flex; padding: 3px; border-radius: 10px; background: rgba(255,255,255,0.07); flex: none; }
+  .seg button { padding: 7px 12px; border-radius: 7px; font-size: 13px; font-weight: 700; color: var(--dim); white-space: nowrap; }
+  .seg button[aria-pressed="true"] { background: var(--fg); color: #05070b; }
+  .freeonly { display: none; }
+  #app.free .freeonly { display: inline-flex; }
+  .text { padding: 9px 14px; border-radius: 10px; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; flex: none; border: 1px solid var(--line); }
+  #settings[aria-expanded="true"] { background: var(--fg); color: #05070b; }
+
+  /* ---- 設定 ---- */
+  #panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(400px, 100vw); background: var(--panel); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-left: 1px solid var(--line); overflow-y: auto; padding: 22px 22px calc(24px + env(safe-area-inset-bottom)); transform: translateX(102%); transition: transform .35s cubic-bezier(.2,.8,.2,1); z-index: 6; overscroll-behavior: contain; }
+  #app.panel #panel { transform: none; }
+  #panel header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+  #panel h1 { margin: 0; font: 700 13px var(--mono); letter-spacing: 0.32em; color: var(--fg); }
+  #panel header p { margin: 8px 0 0; font-size: 13px; line-height: 1.7; color: var(--dim); }
+  #closePanel { width: 36px; height: 36px; border-radius: 9px; display: grid; place-items: center; flex: none; }
+  #closePanel:hover { background: rgba(255,255,255,0.08); }
+  section { padding: 18px 0; border-top: 1px solid var(--line); }
+  h2 { margin: 0 0 12px; font-size: 12px; font-weight: 700; letter-spacing: 0.18em; color: var(--dim); }
+  .crafts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .craft { display: flex; flex-direction: column; align-items: stretch; gap: 4px; padding: 6px 6px 9px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255,255,255,0.03); text-align: left; transition: border-color .2s, background .2s; }
+  .craft img { width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; border-radius: 8px; background: #050608; }
+  .craft .cn { font-size: 11.5px; font-weight: 700; padding: 0 3px; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: clip; }
+  .craft .ce { font: 500 10px var(--mono); color: var(--faint); letter-spacing: 0.08em; padding: 0 4px; }
+  .craft[aria-pressed="true"] { border-color: var(--pink); background: rgba(255,61,154,0.08); }
+  .seg.wide { display: flex; }
+  .seg.wide button { flex: 1; font: 700 15px var(--mono); padding: 9px 0; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--dim); line-height: 1.6; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .chip { padding: 6px 11px; border-radius: 999px; border: 1px solid var(--line); font-size: 12px; color: var(--dim); }
+  .chip:hover { color: var(--fg); border-color: rgba(255,255,255,0.3); }
+  .mixbar { display: flex; height: 26px; border-radius: 7px; overflow: hidden; margin-bottom: 14px; background: rgba(255,255,255,0.05); }
+  .mixbar span { flex: 0 1 0; min-width: 0; display: grid; place-items: center; font: 700 11px var(--mono); color: #05070b; transition: flex-grow .25s; overflow: hidden; }
+  #segC { background: var(--cC); } #segE { background: var(--cE); } #segS { background: var(--cS); } #segW { background: var(--cW); }
+  .mixrow { display: grid; grid-template-columns: 9px 1fr 46px; grid-template-rows: auto auto; column-gap: 10px; align-items: center; margin-bottom: 10px; }
+  .mixrow i { width: 9px; height: 9px; border-radius: 50%; grid-row: 1; }
+  .mixrow label { font-size: 13px; font-weight: 700; }
+  .mixrow small { grid-column: 2 / 4; grid-row: 2; font-size: 11.5px; color: var(--faint); margin-top: 1px; }
+  .mixrow output { font: 700 12px var(--mono); color: var(--dim); text-align: right; }
+  .mixrow input { grid-column: 1 / 4; grid-row: 3; width: 100%; margin: 6px 0 0; }
+  input[type=range] { accent-color: var(--pink); }
+  .row { display: flex; align-items: center; gap: 12px; }
+  .row input { flex: 1; }
+  .val { font: 700 13px var(--mono); color: var(--fg); white-space: nowrap; }
+  .actions { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding-top: 18px; border-top: 1px solid var(--line); }
+  #apply { padding: 14px; border-radius: 12px; background: rgba(255,255,255,0.1); font-weight: 900; letter-spacing: 0.08em; transition: background .2s, color .2s; }
+  #apply.dirty { background: var(--pink); color: #fff; }
+  #share { padding: 14px 14px; border-radius: 12px; border: 1px solid var(--line); font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+  footer { margin-top: 18px; font-size: 11.5px; line-height: 1.7; color: var(--faint); }
+  footer b { color: var(--dim); font-weight: 700; }
+  footer a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+
+  /* ---- スマホ縦：映像の下にバーと設定を並べる ---- */
+  @media (max-width: 820px) and (orientation: portrait) {
+    body { overflow: auto; }
+    #stage { position: relative; inset: auto; }
+    #c { width: 100vw; }
+    #bar { position: sticky; top: 0; flex-wrap: wrap; background: #07090d; padding: 10px 12px; gap: 8px; border-bottom: 1px solid var(--line); }
+    #app.idle #bar { opacity: 1; }
+    #app.panel #bar { right: auto; }
+    #app.idle { cursor: auto; }
+    #seek { order: 10; flex-basis: 100%; }
+    #time { min-width: 0; }
+    #settings, #closePanel { display: none; }
+    #panel { position: static; width: auto; transform: none; border-left: 0; background: #07090d; backdrop-filter: none; -webkit-backdrop-filter: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <main id="stage">
+    <canvas id="c" aria-label="追尾ミサイルの群れを振り切る機体の映像"></canvas>
+    <div id="status" role="status" class="on">読み込み中…</div>
+    <button id="bigplay" type="button" aria-label="音つきで再生"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z"/></svg>再生</button>
+  </main>
+
+  <div id="bar">
+    <button id="play" class="icon" type="button" aria-label="再生">
+      <svg class="i-play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z"/></svg>
+      <svg class="i-pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6.5 4.5h4v15h-4zM13.5 4.5h4v15h-4z"/></svg>
+    </button>
+    <input id="seek" type="range" min="0" max="90" step="0.01" value="0" aria-label="再生位置">
+    <span id="time">0:00 / 0:00</span>
+    <div class="seg" role="group" aria-label="見せ方">
+      <button type="button" data-mode="film" aria-pressed="true">映像</button>
+      <button type="button" data-mode="free" aria-pressed="false">自由視点</button>
+    </div>
+    <div class="seg freeonly" role="group" aria-label="自由視点のカメラ">
+      <button id="orbit" type="button" aria-pressed="true">機体</button>
+      <button id="pov" type="button" aria-pressed="false">操縦席</button>
+      <button id="follow" type="button" aria-pressed="false">ミサイル</button>
+    </div>
+    <button id="sound" class="icon" type="button" aria-label="音" aria-pressed="true">
+      <svg class="i-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor" stroke="none"/><path d="M15.5 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg>
+      <svg class="i-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor" stroke="none"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
+    </button>
+    <button id="settings" class="text" type="button" aria-expanded="false" aria-controls="panel">設定</button>
+    <button id="fs" class="icon" type="button" aria-label="全画面">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>
+    </button>
+  </div>
+
+  <aside id="panel" aria-label="設定">
+    <header>
+      <div>
+        <h1>MISSILE SWARM</h1>
+        <p>追尾ミサイル 2 波を、操縦だけで振り切る。機体とミサイルを選ぶと、その場で計算し直して飛ばします。</p>
+      </div>
+      <button id="closePanel" type="button" aria-label="設定を閉じる"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </header>
+
+    <section>
+      <h2>機体</h2>
+      <div id="crafts" class="crafts"></div>
+    </section>
+
+    <section>
+      <h2>ミサイルの段数</h2>
+      <div class="seg wide" role="group" aria-label="段数">
+        <button type="button" data-st="1">1</button><button type="button" data-st="2">2</button><button type="button" data-st="3">3</button><button type="button" data-st="4">4</button>
+      </div>
+      <p id="stNote" class="note"></p>
+    </section>
+
+    <section>
+      <h2>軌道の割合</h2>
+      <div id="presets" class="chips"></div>
+      <div class="mixbar" aria-hidden="true"><span id="segC"></span><span id="segE"></span><span id="segS"></span><span id="segW"></span></div>
+      <div class="mixrow"><i style="background:var(--cC)"></i><label for="mixC">直進</label><output id="pctC"></output><small>まっすぐ狙って突っ込む</small><input id="mixC" type="range" min="0" max="100" step="1"></div>
+      <div class="mixrow"><i style="background:var(--cE)"></i><label for="mixE">扇 → 直進</label><output id="pctE"></output><small>大きく開いてから、別々の向きから一直線に</small><input id="mixE" type="range" min="0" max="100" step="1"></div>
+      <div class="mixrow"><i style="background:var(--cS)"></i><label for="mixS">回り込み</label><output id="pctS"></output><small>狙いの線のまわりを巻きながら弧を描いて迫る</small><input id="mixS" type="range" min="0" max="100" step="1"></div>
+      <div class="mixrow"><i style="background:var(--cW)"></i><label for="mixW">ぐにゃぐにゃ</label><output id="pctW"></output><small>巻く速さと大きさが揺れ続け、締まり切らない</small><input id="mixW" type="range" min="0" max="100" step="1"></div>
+    </section>
+
+    <section>
+      <h2>1 波の本数</h2>
+      <div class="row"><input id="count" type="range" min="10" max="100" step="10" aria-label="1 波の本数"><span id="countV" class="val"></span></div>
+    </section>
+
+    <section>
+      <h2>乱数</h2>
+      <div class="row"><span id="seedV" class="val" style="flex:1"></span><button id="reseed" class="chip" type="button">振り直す</button></div>
+    </section>
+
+    <section>
+      <h2>画質</h2>
+      <div class="seg wide" role="group" aria-label="画質">
+        <button type="button" data-q="high">高</button><button type="button" data-q="mid">中</button><button type="button" data-q="low">低</button>
+      </div>
+    </section>
+
+    <div class="actions">
+      <button id="apply" type="button">この設定で飛ばす</button>
+      <button id="share" type="button">URL をコピー</button>
+    </div>
+    <footer>
+      ミサイル軌道と機体のモデリングのコードは <a href="https://github.com/studio-veco/missile-swarm-kit" target="_blank" rel="noopener"><b>missile-swarm-kit</b></a>（MIT License）として公開しています。<br>
+      studio veco
+    </footer>
+  </aside>
+</div>
+<script type="module" src="app/main.js"></script>
+</body>
+</html>

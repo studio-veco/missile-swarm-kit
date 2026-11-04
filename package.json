@@ -1,7 +1,7 @@
 {
   "name": "missile-swarm-kit",
   "version": "0.1.0",
-  "description": "Homing missile swarm choreography (pods that split into dozens of curving homing missiles) and procedural organic airframes for three.js",
+  "description": "MISSILE SWARM: a browser viewer where a fighter dodges a homing missile swarm (pick the aircraft, stages, trajectory mix; re-solved on the spot), plus the open kit behind it: the swarm solver and procedural airframes for three.js",
   "homepage": "https://missile-swarm.pages.dev/",
   "repository": {
     "type": "git",
@@ -21,14 +21,22 @@
     "./aircraft": "./src/aircraft/index.js"
   },
   "files": [
+    "index.html",
+    "app",
     "src",
+    "vendor",
+    "data",
     "skills",
     "examples",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "preview": "node tools/preview.mjs preview.png"
+    "start": "node tools/serve.mjs 8177",
+    "build": "sh tools/build.sh",
+    "preview": "node tools/preview.mjs preview.png",
+    "shot": "node tools/shot.mjs",
+    "ui": "node tools/ui.mjs out/ui"
   },
   "peerDependencies": {
     "three": ">=0.160.0"
@@ -39,6 +47,7 @@
     }
   },
   "devDependencies": {
+    "playwright-core": "^1.64.1",
     "three": "^0.170.0"
   },
   "keywords": [

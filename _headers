@@ -1,0 +1,4 @@
+/*
+  Cache-Control: no-cache
+/data/*
+  Cache-Control: public, max-age=86400

@@ -1,0 +1,4 @@
+# Cloudflare Pages: the repository root is the site (no build step)
+name = "missile-swarm"
+pages_build_output_dir = "."
+compatibility_date = "2026-11-01"

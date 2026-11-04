@@ -3,3 +3,5 @@ node_modules/
 *.log
 preview.png
 out*.png
+dist/
+out/

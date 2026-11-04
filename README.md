@@ -1,17 +1,47 @@
-# missile-swarm-kit
+# MISSILE SWARM / missile-swarm-kit
 
-追尾ミサイルの群れの軌道計算と、有機的な機体をコードで組むための道具。three.js 向け、依存なしの ES モジュール。
+追尾ミサイルの群れを、戦闘機が操縦だけで振り切るブラウザの映像と、その中身（群れの軌道計算・機体をコードで組む道具）一式。
+このリポジトリをそのまま静的サイトとして置けば、デモと同じものが公開できます。
 
-Swarm choreography for curving homing missiles, plus a small kit for building organic aircraft from tables of numbers. Plain ES modules for three.js.
+A browser piece where a fighter dodges a homing missile swarm, and everything behind it: the swarm solver and a kit for building aircraft from tables of numbers. The repository root **is** the site — host it as-is and you get the same thing as the demo.
 
-- 母ミサイルが割れて数十本に。扇に開く・回り込む・ぐにゃぐにゃ巻く・まっすぐ突っ込む弾が混ざり、狙った機体の 9〜18m 脇を紙一重ですり抜け、1 本ずつ爆発する
-- 段数（1〜4）と軌道の割合（直進／扇→直進／回り込み／ぐにゃぐにゃ）と本数を選べる
-- 全部を先に固定の刻み（120Hz）で解いて配列に入れる。どの時刻にも飛べて、同じ乱数なら何度でも同じ結果（node でもブラウザでも動く）
-- 機体：断面を並べて張る胴（`loft`）、前縁・後縁が曲がった翼とひれ（`foil`）、左右反転・結合・塗り分け。デルフィナス・F-22・F-16・Su-37・MiG-29・F-2A の 6 機を収録
+**Demo: https://missile-swarm.pages.dev/**
 
-**Demo: https://missile-swarm.pages.dev/** — pick the aircraft, the number of stages and the trajectory mix; the swarm is re-solved on the spot.
+- 機体を選ぶ：デルフィナス・F-22・F-16・Su-37・MiG-29・F-2A（操縦席の照準器とレーダーは機種ごとに別物）
+- ミサイルを選ぶ：段数（1〜4）・軌道の割合（直進／扇→直進／回り込み／ぐにゃぐにゃ）・本数・乱数。押すとその場で計算し直す
+- 見せ方：88 秒のカット割りの「映像」と、指で回す「自由視点」（機体・操縦席・ミサイルのカメラ）
+- 設定は URL に入るので、そのまま共有できる
 
-デモ：機体・段数・軌道の割合を選ぶと、その場で計算し直して飛ばします。
+## そのまま公開する / Publish as-is
+
+ビルドは要りません。リポジトリの一番上がサイトです（`index.html` から相対パスで読むだけ）。
+
+- **Cloudflare Pages**（Git 連携）：このリポジトリをつなぐ → Build command は空、Build output directory は `/`。`_headers` でキャッシュも設定済み
+- **Cloudflare Pages**（手元から）：`npm run build` → `npx wrangler pages deploy dist --project-name <name>`
+- **GitHub Pages**：Settings → Pages → Deploy from a branch → `main` / `/(root)`
+- **ほかの静的ホスティング**（Netlify・Vercel・S3 など）：リポジトリの中身をそのまま置く
+
+## 手元で動かす / Run locally
+
+```bash
+npm install          # 確認用の道具（three・playwright-core）だけ。サイト自体は依存なし
+npm start            # http://127.0.0.1:8177 で配る（ES モジュールは file:// では開けない）
+```
+
+`python3 -m http.server` など、どの静的サーバーでも動きます。
+
+## 中身 / Layout
+
+| 場所 | 中身 |
+|---|---|
+| `index.html` | 画面（設定パネル・再生バー・CSS） |
+| `app/` | サイトのコード：カット割り（`director.js`）、地形と星（`world.js`・`terrain.js`）、煙（`smoke.js`）、爆発と噴射（`fx.js`）、光のにじみ（`post.js`）、HUD（`hud.js`）、機種ごとの操縦席の表示とレーダー（`cockpit_hud.js`）、音（`audio.js`）、まとめ役（`main.js`） |
+| `src/` | キット：群れの軌道計算（`missiles.js`）、操縦表で飛ぶ戦闘機（`flight.js`）、星と地形の窓口（`world.js`）、機体（`aircraft/`） |
+| `vendor/` | three.js r170（MIT） |
+| `data/` | 音楽（自作の合成曲）と機体のサムネイル |
+| `skills/` | AI エージェント向けの手順書 2 本 |
+| `examples/minimal.html` | キットだけを使った最小の例 |
+| `tools/` | 確認用：静的サーバー、1 コマずつの書き出し、画面の操作、機体の確認画像 |
 
 ## 使い方 / Usage
 
@@ -76,9 +106,14 @@ craft.setGlow(throttle);                                 // ノズルの光
 ## 確認 / Checks
 
 ```bash
-node tools/preview.mjs out.png                 # 全機を上・横・正面・斜めから描いて PNG に（ブラウザ不要）
-node tools/regress_film.mjs <元の計算のフォルダ>  # 元の映像の計算と完全一致するか（作者の環境用）
+node tools/preview.mjs out.png                        # 全機を上・横・正面・斜めから描いて PNG に（ブラウザ不要）
+node tools/shot.mjs out/a.jpg "t=12" "free=30&cam=cockpit"   # サイトを 1 コマずつ書き出す（Chrome と ffmpeg が要る）
+CFG='{"craft":"su37","stages":3}' node tools/shot.mjs out/b.jpg "t=38"
+node tools/ui.mjs out/ui                              # 再生・設定の変更・自由視点まで操作して画面を撮る
+node tools/regress_film.mjs <元の計算のフォルダ>         # 元の映像の計算と完全一致するか（作者の環境用）
 ```
+
+Chrome の場所は `CHROME=/path/to/chrome` で変えられます。
 
 ## スキル / Skills
 
@@ -94,4 +129,6 @@ node tools/regress_film.mjs <元の計算のフォルダ>  # 元の映像の計�
 
 ## License
 
-MIT © 2026 studio veco
+MIT © 2026 studio veco — コード・音楽（`data/music.m4a`、自作の合成曲）・画像を含むこのリポジトリのすべて。
+
+同梱・読み込みしているもの：three.js r170（MIT、`vendor/three.module.js` に著作権表示あり）、Google Fonts の Noto Serif JP・Zen Kaku Gothic New・JetBrains Mono（SIL Open Font License、CDN から読み込み）。
