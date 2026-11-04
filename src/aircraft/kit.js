@@ -225,9 +225,10 @@ export function makeNozzle({ x = 0, y = 0, z0, r, len = 0.8, flare = 1.15, envMa
 
 /**
  * Wrap meshes into the common aircraft interface used by the renderer and the camera director.
- * extra: { tips, stabTips, eye, nozzles: [{noz, glow, exit}], nozzleR, wingVapor, length, glowColor }
+ * extra: { tips, stabTips, eye, nozzles: [{noz, glow, exit}], nozzleR, wingVapor, length, glowColor,
+ *          panoramic (true: a wrap-around display cockpit — setPOV(true) also hides the airframe) }
  */
-export function assemble({ body, canopy, frame = [], pilot, seat, cockpit, nozzles, nozzleR, tips, stabTips, eye, wingVapor, length, glowColor = [1.0, 0.55, 0.75], name }) {
+export function assemble({ body, canopy, frame = [], pilot, seat, cockpit, nozzles, nozzleR, tips, stabTips, eye, wingVapor, length, glowColor = [1.0, 0.55, 0.75], name, panoramic = false }) {
   const root = new THREE.Group();
   root.add(body);
   if (canopy) root.add(canopy);
@@ -242,8 +243,9 @@ export function assemble({ body, canopy, frame = [], pilot, seat, cockpit, nozzl
     nozzles: nozzles.map((n) => n.exit),
     nozzle: nozzles[0].exit,
     nozzleR: nozzleR ?? nozzles[0].noz.geometry.parameters?.radiusTop ?? 0.4,
-    tips, stabTips: stabTips || tips, eye, wingVapor, length,
-    setPOV(on, back) { pilot.visible = !on; seat.visible = !back; for (const o of hidePOV) o.visible = !on; },
+    tips, stabTips: stabTips || tips, eye, wingVapor, length, panoramic,
+    // panoramic: the cockpit is a wrap-around display, so from inside the airframe is not drawn at all
+    setPOV(on, back) { pilot.visible = !on; seat.visible = !back; for (const o of hidePOV) o.visible = !on; if (panoramic) body.visible = !on; },
     setGlow(thr) { const k = 0.6 + thr * 3.5; for (const n of nozzles) n.glow.material.color.setRGB(glowColor[0] * k, glowColor[1] * k, glowColor[2] * k); },
   };
 }

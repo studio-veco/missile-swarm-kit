@@ -121,6 +121,6 @@ export function buildDelphinus(envMap, o = {}) {
     stabTips: [new THREE.Vector3(2.3, 0.1, -7.05), new THREE.Vector3(-2.3, 0.1, -7.05)],
     eye, length: 13.6,
     wingVapor: { x: [0.95, 3.2], le: [1.0, -2.9], te: [-2.2, -4.05], y: [0.04, -0.28] },
-    glowColor: [0.55, 0.9, 1.0],
+    glowColor: [0.55, 0.9, 1.0], panoramic: true,
   });
 }

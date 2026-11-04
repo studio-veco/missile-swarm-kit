@@ -48,6 +48,7 @@ const craft = buildAircraft('f22', envMap);             // 'delphinus' | 'f22' |
 scene.add(craft.root);
 craft.setGlow(throttle);                                 // ノズルの光
 // craft.eye（操縦席の目）、craft.nozzles、craft.tips（翼端）、craft.wingVapor（翼の上の雲の範囲）
+// craft.panoramic … true なら全周表示の操縦席。craft.setPOV(true) で機体ごと隠れる（デルフィナス）
 ```
 
 最小の動く例は `examples/minimal.html`（ローカルの http サーバーで開く）。
